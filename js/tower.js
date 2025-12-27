@@ -57,6 +57,12 @@
       player,
       renderer;
 
+  // Nowe zmienne do obsługi progresji poziomów
+  var currentLevelIndex = 0;
+  var levels = ["demo", "poziom2", "poziom3"]; // Tutaj dopisz nazwy swoich plików JSON
+  var gameImages;
+  var gameStarted = false;
+
   //===========================================================================
   // UTILITY METHODS
   //===========================================================================
@@ -79,25 +85,47 @@
 
   function run() {
     Game.Load.images(IMAGES, function(images) {
-      Game.Load.json("levels/demo", function(level) {
-        setup(images, level);
+      gameImages = images; // Zapisujemy obrazy, by nie ładować ich ponownie
+      loadLevel(levels[currentLevelIndex]);
+    });
+  }
+
+  // Nowa funkcja ładująca konkretny poziom
+  function loadLevel(levelName) {
+    Game.Load.json("levels/" + levelName, function(levelData) {
+      setup(gameImages, levelData);
+      if (!gameStarted) {
         Game.run({
           fps:    FPS,
           update: update,
           render: render
         });
+        gameStarted = true;
         Dom.on(document, 'keydown', function(ev) { return onkey(ev, ev.keyCode, true);  }, false);
         Dom.on(document, 'keyup',   function(ev) { return onkey(ev, ev.keyCode, false); }, false);
-      });
+      }
     });
   }
 
   function setup(images, level) {
+    var oldScore = player ? player.score : 0; // Zapamiętujemy wynik przed resetem klasy Player
     tower    = new Tower(level);
     monsters = new Monsters(level);
     player   = new Player();
+    player.score = oldScore; // Przywracamy wynik na nowym poziomie
     camera   = new Camera();
     renderer = new Renderer(images);
+  }
+
+  // Funkcja wywoływana przy wejściu w punkt 'n'
+  function nextLevel() {
+    currentLevelIndex++;
+    if (currentLevelIndex < levels.length) {
+      loadLevel(levels[currentLevelIndex]);
+    } else {
+      alert("To był ostatni poziom! Gratulacje!");
+      window.location.reload();
+    }
   }
 
   function update(dt) {
@@ -174,7 +202,9 @@
           map[row][col] = {
             platform: (cell == 'X'),
             ladder:   (cell == 'H'),
-            coin:     (cell == 'o')
+            coin:     (cell == 'o'),
+            next:     (cell == 'n'), // Rozpoznawanie następnego poziomu
+            exit:     (cell == 'e')  // Rozpoznawanie wyjścia
           };
         }
       }
@@ -370,6 +400,17 @@
       else if (bl.coin) return this.collectCoin(bl);
       else if (br.coin) return this.collectCoin(br);
 
+      // Nowa obsługa punktów specjalnych 'n' i 'e'
+      if (tl.next || tr.next || ml.next || mr.next || bl.next || br.next) {
+        nextLevel();
+        return false;
+      }
+      if (tl.exit || tr.exit || ml.exit || mr.exit || bl.exit || br.exit) {
+        alert("Gra zakończona! Twój wynik: " + this.score);
+        window.location.reload();
+        return false;
+      }
+
       if (fallingDown && bl.blocked && !ml.blocked && !tl.blocked && nearRowSurface(this.y + bl.y, bl.row))
         return this.collideDown(bl);
 
@@ -440,6 +481,8 @@
       point.blocked  = point.cell.platform;
       point.platform = point.cell.platform;
       point.ladder   = point.cell.ladder;
+      point.next     = point.cell.next; // Przekazanie flagi n
+      point.exit     = point.cell.exit; // Przekazanie flagi e
       point.monster  = false;
       point.coin     = false;
       if (point.cell.monster) {
@@ -460,6 +503,7 @@
     collectCoin: function(point) {
       point.cell.coin = false;
       this.score = this.score + 50;
+      return false;
     },
 
     startFalling: function(allowFallingJump) {
@@ -480,8 +524,8 @@
     },
 
     collideDown: function(point) {
-      this.y       = row2y(point.row + 1);
-      this.dy      = 0;
+      this.y        = row2y(point.row + 1);
+      this.dy       = 0;
       this.falling = false;
       return true;
     },
@@ -510,7 +554,7 @@
       this.dx  = 0;
       this.dy  = 0;
       this.x   = normalizex(this.x + (left ? -dx : dx));
-      this.y   =            this.y +               dy;
+      this.y   =            this.y +                dy;
 
       if (--(this.stepCount) == 0)
         this.stepping = DIR.NONE;
@@ -712,15 +756,15 @@
   var Renderer = Class.create({
 
     initialize: function(images) {
-      this.images        = images;
-      this.canvas        = Game.Canvas.init(Dom.get('canvas'), WIDTH, HEIGHT);
-      this.ctx           = this.canvas.getContext('2d');
-      this.stars         = this.createStars();
-      this.gradient      = this.createGradient();
-      this.ground        = this.createGround();
-      this.debug         = Dom.get('debug');
-      this.score         = Dom.get('score');
-      this.vscore        = 0;
+      this.images         = images;
+      this.canvas         = Game.Canvas.init(Dom.get('canvas'), WIDTH, HEIGHT);
+      this.ctx            = this.canvas.getContext('2d');
+      this.stars          = this.createStars();
+      this.gradient       = this.createGradient();
+      this.ground         = this.createGround();
+      this.debug          = Dom.get('debug');
+      this.score          = Dom.get('score');
+      this.vscore         = 0;
       this.platformWidth = 2 * tower.or * Math.tan((360/tower.cols) * Math.PI / 360);
     },
 
@@ -882,11 +926,26 @@
             this.renderLadder(ctx, c, y);
           else if (cell.coin)
             this.renderCoin(ctx, c, y);
+          
+          // Renderowanie punktów specjalnych
+          if (cell.next) this.renderPoint(ctx, c, y, "#00FF00"); // Następny poziom - zielony
+          if (cell.exit) this.renderPoint(ctx, c, y, "#FF0000"); // Wyjście - czerwony
+
           if (cell.monster)
             this.renderMonster(ctx, c, y, cell.monster);
         }
         c = normalizeColumn(c + dir);
       }
+    },
+
+    // Pomocnicza funkcja do rysowania portali na wieży
+    renderPoint: function(ctx, col, y, color) {
+      var x = col2x(col+0.5),
+          x0 = tx(x, tower.or);
+      ctx.fillStyle = color;
+      ctx.beginPath();
+      ctx.arc(x0, y - ROW_HEIGHT/2, ROW_HEIGHT/4, 0, 2*Math.PI);
+      ctx.fill();
     },
 
     //-------------------------------------------------------------------------
@@ -971,7 +1030,7 @@
         ctx.fillRect(tx(player.rx, tower.ir) + player.collision.middleRight.x,      ty(player.ry + player.collision.middleRight.y), -5,  5);
         ctx.fillRect(tx(player.rx, tower.ir) + player.collision.bottomLeft.x,       ty(player.ry + player.collision.bottomLeft.y),   5, -5);
         ctx.fillRect(tx(player.rx, tower.ir) + player.collision.bottomRight.x,      ty(player.ry + player.collision.bottomRight.y), -5, -5);
-        ctx.fillRect(tx(player.rx, tower.ir) + player.collision.ladderUp.x - 2.5,   ty(player.ry + player.collision.ladderUp.y),     5,  5);
+        ctx.fillRect(tx(player.rx, tower.ir) + player.collision.ladderUp.x - 2.5,   ty(player.ry + player.collision.ladderUp.y),      5,  5);
         ctx.fillRect(tx(player.rx, tower.ir) + player.collision.ladderDown.x - 2.5, ty(player.ry + player.collision.ladderDown.y),   5, -5);
       }
     },
@@ -981,7 +1040,7 @@
     renderScore: function(ctx) {
       if (player.score > this.vscore) {
         this.vscore = this.vscore + 2;
-        Dom.set(score, this.vscore);
+        Dom.set(this.score, this.vscore);
       }
     },
 
