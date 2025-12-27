@@ -1,11 +1,10 @@
-Javascript Tower Platformer
+Roar Tower - JS platformer
 ===========================
 
 An HTML5 rotating-tower platform game inspired by the old c64 game "Nebulus"
 
- * [play the game](https://jakesgordon.com/games/tower-platformer/)
- * [read more](https://jakesgordon.com/writing/rotating-tower-platformer/)
- * [view the source](https://github.com/jakesgordon/javascript-tower-platformer)
+ * [read more about original](https://jakesgordon.com/writing/rotating-tower-platformer/)
+ * [view the original source](https://github.com/jakesgordon/javascript-tower-platformer)
 
 SUPPORTED BROWSERS
 ==================
@@ -22,7 +21,7 @@ FUTURE FEATURES
 
  * level exit
  * game menu
- * multiple levels
+ *  ~~multiple levels~~ ✅
  * dissolving platforms
  * elevators
  * shortcut doors
