@@ -19,7 +19,7 @@ The game is 100% client side javascript, html and css. It should run when served
 FUTURE FEATURES
 ===============
 
- * level exit
+ * ~~level exit~~ ✅
  * game menu
  *  ~~multiple levels~~ ✅
  * dissolving platforms
@@ -28,6 +28,7 @@ FUTURE FEATURES
  * countdown timer
  * mobile touch support
  * sound fx and music
+ * ~~animated coins~~ ✅
 
 TECH DEBT
 =========
