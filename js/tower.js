@@ -30,7 +30,7 @@
       DIR           = { NONE: 0, LEFT: 1, RIGHT: 2, UP: 3, DOWN: 4 },       // useful enum for declaring an abstract direction
       STEP          = { FRAMES: 8, W: COL_WIDTH/10, H: ROW_HEIGHT },        // attributes of player stepping up
       KEY           = { SPACE: 32, LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40 }, // input key codes
-      IMAGES        = ['ground', 'ladder', 'player', 'monster', 'coins'],   // sprite image files for loading
+      IMAGES        = ['ground', 'ladder', 'player', 'monster', 'coins'],  	// sprite image files for loading
       PLAYER        = { DEBUG: false,                                       // enable player debug rendering (bounding box and collision points)
         RIGHT: { x: 0,    y: 0, w: 72, h: 96, frames: 11, fps: 30 },        // animation - player running right
         STAND: { x: 792,  y: 0, w: 72, h: 96, frames: 1,  fps: 30 },        // animation - player standing still
@@ -40,6 +40,7 @@
         HURTL: { x: 1080, y: 0, w: 72, h: 96, frames: 1,  fps: 10 },        // animation - player hurt while running left
         HURTR: { x: 1152, y: 0, w: 72, h: 96, frames: 1,  fps: 10 }         // animation - player hurt while running right
       },
+      COIN_ANIMATION = { x: 0, y: 0, w: 46, h: 36, frames: 10, fps: 10 },	// animation coin in game
       MONSTERS = [
         { name: "BLOCK", nx: -0.5, ny: -0.5, w: 1.5*METER, h: 1.5*METER, speed: 4*METER, dir: 'up',    vertical: true,  horizontal: false, animation: { up:   { x:   0, y:  0, w: 50, h: 50, frames: 2, fps: 5 }, down:  { x:   0, y:  0, w: 50, h: 50, frames: 2, fps: 5 } } },
         { name: "FLY",   nx: -0.5, ny: -0.5, w: 1.5*METER, h: 1.0*METER, speed: 8*METER, dir: 'left',  vertical: false, horizontal: true,  animation: { left: { x: 100, y:  7, w: 76, h: 36, frames: 2, fps: 5 }, right: { x: 252, y:  7, w: 76, h: 36, frames: 2, fps: 5 } } },
@@ -57,9 +58,9 @@
       player,
       renderer;
 
-  // Nowe zmienne do obsługi progresji poziomów
+  // Variables to new levels
   var currentLevelIndex = 0;
-  var levels = ["demo", "poziom2", "poziom3"]; // Tutaj dopisz nazwy swoich plików JSON
+  var levels = ["demo", "poziom2", "poziom3"]; // Here add new levels name
   var gameImages;
   var gameStarted = false;
 
@@ -85,12 +86,12 @@
 
   function run() {
     Game.Load.images(IMAGES, function(images) {
-      gameImages = images; // Zapisujemy obrazy, by nie ładować ich ponownie
+      gameImages = images;
       loadLevel(levels[currentLevelIndex]);
     });
   }
 
-  // Nowa funkcja ładująca konkretny poziom
+  // New function for new levels
   function loadLevel(levelName) {
     Game.Load.json("levels/" + levelName, function(levelData) {
       setup(gameImages, levelData);
@@ -132,6 +133,7 @@
     player.update(dt);
     monsters.update(dt);
     camera.update(dt);
+    tower.updateCoins(dt); // Dodajemy aktualizację animacji monet
   }
 
   function render(dt) {
@@ -177,6 +179,8 @@
       this.map      = this.createMap(level.map);
       this.ground   = { platform: true  };
       this.air      = { platform: false };
+      this.coinAnimationFrame = 0;
+      this.coinAnimationTime = 0;
 
     },
 
@@ -203,12 +207,22 @@
             platform: (cell == 'X'),
             ladder:   (cell == 'H'),
             coin:     (cell == 'o'),
-            next:     (cell == 'n'), // Rozpoznawanie następnego poziomu
-            exit:     (cell == 'e')  // Rozpoznawanie wyjścia
+            next:     (cell == 'n'), // next level point 
+            exit:     (cell == 'e')  // escape on last level
           };
         }
       }
       return map;
+    },
+
+    //-------------------------------------------------------------------------
+    
+    updateCoins: function(dt) {
+      this.coinAnimationTime += dt;
+      if (this.coinAnimationTime >= 1/COIN_ANIMATION.fps) {
+        this.coinAnimationFrame = (this.coinAnimationFrame + 1) % COIN_ANIMATION.frames;
+        this.coinAnimationTime = 0;
+      }
     }
 
   });
@@ -400,7 +414,6 @@
       else if (bl.coin) return this.collectCoin(bl);
       else if (br.coin) return this.collectCoin(br);
 
-      // Nowa obsługa punktów specjalnych 'n' i 'e'
       if (tl.next || tr.next || ml.next || mr.next || bl.next || br.next) {
         nextLevel();
         return false;
@@ -481,8 +494,8 @@
       point.blocked  = point.cell.platform;
       point.platform = point.cell.platform;
       point.ladder   = point.cell.ladder;
-      point.next     = point.cell.next; // Przekazanie flagi n
-      point.exit     = point.cell.exit; // Przekazanie flagi e
+      point.next     = point.cell.next; // Flags n
+      point.exit     = point.cell.exit; // Flags e
       point.monster  = false;
       point.coin     = false;
       if (point.cell.monster) {
@@ -766,6 +779,7 @@
       this.score          = Dom.get('score');
       this.vscore         = 0;
       this.platformWidth = 2 * tower.or * Math.tan((360/tower.cols) * Math.PI / 360);
+	  this.hudTimer       = 0;
     },
 
     //-------------------------------------------------------------------------
@@ -791,6 +805,8 @@
       this.renderPlayer(this.ctx);
       this.renderScore(this.ctx);
       this.ctx.restore();
+	  
+	  this.hudTimer += dt;
 
       // Dom.set(debug, player.debug);
 
@@ -995,9 +1011,14 @@
           h     = COIN.H,
           x0    = tx(x, tower.or),
           x1    = x0 - w/2,
-          x2    = x0 + w/2;
+          frame = tower.coinAnimationFrame,
+          frameWidth = COIN_ANIMATION.w,
+          frameHeight = COIN_ANIMATION.h;
 
-      ctx.drawImage(coins, 0, d*36, coins.width, 36, x1, y-h, w, h);
+      var frameX = frame * frameWidth;
+      var frameY = d * frameHeight;
+      
+      ctx.drawImage(coins, frameX, frameY, frameWidth, frameHeight, x1, y-h, w, h);
 
     },
 
