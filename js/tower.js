@@ -32,7 +32,7 @@
       DIR           = { NONE: 0, LEFT: 1, RIGHT: 2, UP: 3, DOWN: 4 },       // useful enum for declaring an abstract direction
       STEP          = { FRAMES: 8, W: COL_WIDTH/10, H: ROW_HEIGHT },        // attributes of player stepping up
       KEY           = { SPACE: 32, LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40 }, // input key codes
-      IMAGES        = ['ground', 'ladder', 'player', 'monster', 'coins'],  	// sprite image files for loading
+      IMAGES        = ['ground', 'ladder', 'player', 'monster', 'coins'],   // sprite image files for loading
       PLAYER        = { DEBUG: false,                                       // enable player debug rendering
         RIGHT: { x: 0,    y: 0, w: 72, h: 96, frames: 11, fps: 30 },        // animation - player running right
         STAND: { x: 792,  y: 0, w: 72, h: 96, frames: 1,  fps: 30 },        // animation - player standing still
@@ -42,7 +42,7 @@
         HURTL: { x: 1080, y: 0, w: 72, h: 96, frames: 1,  fps: 10 },        // animation - player hurt while running left
         HURTR: { x: 1152, y: 0, w: 72, h: 96, frames: 1,  fps: 10 }         // animation - player hurt while running right
       },
-      COIN_ANIMATION = { x: 0, y: 0, w: 46, h: 36, frames: 10, fps: 10 },	// animation coin in game
+      COIN_ANIMATION = { x: 0, y: 0, w: 46, h: 36, frames: 10, fps: 10 },   // animation coin in game
       MONSTERS = [
         { name: "BLOCK", nx: -0.5, ny: -0.5, w: 1.5*METER, h: 1.5*METER, speed: 4*METER, dir: 'up',    vertical: true,  horizontal: false, animation: { up:   { x:   0, y:  0, w: 50, h: 50, frames: 2, fps: 5 }, down:  { x:   0, y:  0, w: 50, h: 50, frames: 2, fps: 5 } } },
         { name: "FLY",   nx: -0.5, ny: -0.5, w: 1.5*METER, h: 1.0*METER, speed: 8*METER, dir: 'left',  vertical: false, horizontal: true,  animation: { left: { x: 100, y:  7, w: 76, h: 36, frames: 2, fps: 5 }, right: { x: 252, y:  7, w: 76, h: 36, frames: 2, fps: 5 } } },
@@ -517,8 +517,10 @@
       }
 
       // Platforms dis
-      if (fallingDown && bl.disappearing && bl.active && nearRowSurface(this.y + bl.y, bl.row)) bl.cell.steppingOn = true;
-      if (fallingDown && br.disappearing && br.active && nearRowSurface(this.y + br.y, br.row)) br.cell.steppingOn = true;
+      if (!climbing) {
+        if (ul.disappearing && ul.active) ul.cell.steppingOn = true;
+        if (ur.disappearing && ur.active) ur.cell.steppingOn = true;
+      }
 
       if (fallingDown && bl.blocked && !ml.blocked && !tl.blocked && nearRowSurface(this.y + bl.y, bl.row))
         return this.collideDown(bl);
@@ -549,7 +551,7 @@
           return this.collide(br);
         else
           return this.startSteppingUp(DIR.RIGHT);
-      }
+      }                                                                                             
 
       if (runningLeft && tl.blocked && !tr.blocked)
         return this.collide(tl, true);
@@ -890,8 +892,8 @@
       this.debug          = Dom.get('debug');
       this.score          = Dom.get('score');
       this.vscore         = 0;
-      this.platformWidth = 2 * tower.or * Math.tan((360/tower.cols) * Math.PI / 360);
-	  this.hudTimer       = 0;
+      this.platformWidth  = 2 * tower.or * Math.tan((360/tower.cols) * Math.PI / 360);
+      this.hudTimer       = 0;
     },
 
     //-------------------------------------------------------------------------
@@ -918,8 +920,8 @@
       this.renderPlayer(this.ctx);
       this.renderScore(this.ctx);
       this.ctx.restore();
-	  
-	  this.hudTimer += dt;
+   
+      this.hudTimer += dt;
 
       // Dom.set(debug, player.debug);
 
