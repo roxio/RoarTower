@@ -48,7 +48,7 @@
         { name: "FLY",   nx: -0.5, ny: -0.5, w: 1.5*METER, h: 1.0*METER, speed: 8*METER, dir: 'left',  vertical: false, horizontal: true,  animation: { left: { x: 100, y:  7, w: 76, h: 36, frames: 2, fps: 5 }, right: { x: 252, y:  7, w: 76, h: 36, frames: 2, fps: 5 } } },
         { name: "SLIME", nx: -0.5, ny:  0.0, w: 1.5*METER, h: 1.0*METER, speed: 4*METER, dir: 'right', vertical: false, horizontal: true,  animation: { left: { x: 404, y: 11, w: 50, h: 28, frames: 2, fps: 5 }, right: { x: 504, y: 11, w: 50, h: 28, frames: 2, fps: 5 } } },
         { name: "SNAIL", nx: -0.5, ny:  0.0, w: 1.5*METER, h: 1.0*METER, speed: 2*METER, dir: 'left',  vertical: false, horizontal: true,  animation: { left: { x: 604, y:  9, w: 58, h: 32, frames: 2, fps: 5 }, right: { x: 720, y:  9, w: 58, h: 32, frames: 2, fps: 5 } } },
-        { name: "SCORPION", nx: -0.5, ny: 0.0, w: 1.5*METER, h: 1.0*METER, speed: 3*METER, dir: 'left', vertical: false, horizontal: true, shoot: true, animation: { left: { x: 604, y:  9, w: 58, h: 32, frames: 2, fps: 5 }, right: { x: 720, y:  9, w: 58, h: 32, frames: 2, fps: 5 } } } // NOWY: Przeciwnik strzelający (index 4)
+        { name: "SCORPION", nx: -0.5, ny: 0.0, w: 1.5*METER, h: 1.0*METER, speed: 3*METER, dir: 'left', vertical: false, horizontal: true, shoot: true, animation: { left: { x: 836, y:  0, w: 59, h: 50, frames: 2, fps: 5 }, right: { x: 957, y:  0, w: 59, h: 50, frames: 2, fps: 5 } } }
       ];
 
   //===========================================================================
