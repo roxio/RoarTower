@@ -24,18 +24,20 @@
       ACCEL         = 1/4,                                                  // player take 1/4 second to reach maxdx (horizontal acceleration)
       FRICTION      = 1/8,                                                  // player take 1/8 second to stop from maxdx (horizontal friction)
       IMPULSE       = 15 * FPS,                                             // player jump impulse
+      SPRING_IMPULSE = 1 * FPS,                                             // trampoline power
+      BULLET_SPEED  = 7 * METER,                                            // bullet speed
       FALLING_JUMP  = FPS/5,                                                // player allowed to jump for 1/5 second after falling off a platform
-      LADDER_EDGE   = 0.6,                                                  // how far from ladder center (60%) is ladder's true collision boundary, e.g. you fall off if you get more than 60% away from center of ladder
+      LADDER_EDGE   = 0.6,                                                  // how far from ladder center (60%) is ladder's true collision boundary
       COIN          = { W: ROW_HEIGHT, H: ROW_HEIGHT },                     // logical size of coin
       DIR           = { NONE: 0, LEFT: 1, RIGHT: 2, UP: 3, DOWN: 4 },       // useful enum for declaring an abstract direction
       STEP          = { FRAMES: 8, W: COL_WIDTH/10, H: ROW_HEIGHT },        // attributes of player stepping up
       KEY           = { SPACE: 32, LEFT: 37, UP: 38, RIGHT: 39, DOWN: 40 }, // input key codes
       IMAGES        = ['ground', 'ladder', 'player', 'monster', 'coins'],  	// sprite image files for loading
-      PLAYER        = { DEBUG: false,                                       // enable player debug rendering (bounding box and collision points)
+      PLAYER        = { DEBUG: false,                                       // enable player debug rendering
         RIGHT: { x: 0,    y: 0, w: 72, h: 96, frames: 11, fps: 30 },        // animation - player running right
         STAND: { x: 792,  y: 0, w: 72, h: 96, frames: 1,  fps: 30 },        // animation - player standing still
         LEFT:  { x: 1224, y: 0, w: 72, h: 96, frames: 11, fps: 30 },        // animation - player running left
-        BACK:  { x: 2016, y: 0, w: 72, h: 96, frames: 1,  fps: 30 },        // animation - player standing still with back to camera (on ladder but not moving)
+        BACK:  { x: 2016, y: 0, w: 72, h: 96, frames: 1,  fps: 30 },        // animation - player standing still back
         CLIMB: { x: 2016, y: 0, w: 72, h: 96, frames: 11, fps: 30 },        // animation - player climbing ladder
         HURTL: { x: 1080, y: 0, w: 72, h: 96, frames: 1,  fps: 10 },        // animation - player hurt while running left
         HURTR: { x: 1152, y: 0, w: 72, h: 96, frames: 1,  fps: 10 }         // animation - player hurt while running right
@@ -45,7 +47,8 @@
         { name: "BLOCK", nx: -0.5, ny: -0.5, w: 1.5*METER, h: 1.5*METER, speed: 4*METER, dir: 'up',    vertical: true,  horizontal: false, animation: { up:   { x:   0, y:  0, w: 50, h: 50, frames: 2, fps: 5 }, down:  { x:   0, y:  0, w: 50, h: 50, frames: 2, fps: 5 } } },
         { name: "FLY",   nx: -0.5, ny: -0.5, w: 1.5*METER, h: 1.0*METER, speed: 8*METER, dir: 'left',  vertical: false, horizontal: true,  animation: { left: { x: 100, y:  7, w: 76, h: 36, frames: 2, fps: 5 }, right: { x: 252, y:  7, w: 76, h: 36, frames: 2, fps: 5 } } },
         { name: "SLIME", nx: -0.5, ny:  0.0, w: 1.5*METER, h: 1.0*METER, speed: 4*METER, dir: 'right', vertical: false, horizontal: true,  animation: { left: { x: 404, y: 11, w: 50, h: 28, frames: 2, fps: 5 }, right: { x: 504, y: 11, w: 50, h: 28, frames: 2, fps: 5 } } },
-        { name: "SNAIL", nx: -0.5, ny:  0.0, w: 1.5*METER, h: 1.0*METER, speed: 2*METER, dir: 'left',  vertical: false, horizontal: true,  animation: { left: { x: 604, y:  9, w: 58, h: 32, frames: 2, fps: 5 }, right: { x: 720, y:  9, w: 58, h: 32, frames: 2, fps: 5 } } }
+        { name: "SNAIL", nx: -0.5, ny:  0.0, w: 1.5*METER, h: 1.0*METER, speed: 2*METER, dir: 'left',  vertical: false, horizontal: true,  animation: { left: { x: 604, y:  9, w: 58, h: 32, frames: 2, fps: 5 }, right: { x: 720, y:  9, w: 58, h: 32, frames: 2, fps: 5 } } },
+        { name: "SCORPION", nx: -0.5, ny: 0.0, w: 1.5*METER, h: 1.0*METER, speed: 3*METER, dir: 'left', vertical: false, horizontal: true, shoot: true, animation: { left: { x: 604, y:  9, w: 58, h: 32, frames: 2, fps: 5 }, right: { x: 720, y:  9, w: 58, h: 32, frames: 2, fps: 5 } } } // NOWY: Przeciwnik strzelający (index 4)
       ];
 
   //===========================================================================
@@ -56,7 +59,8 @@
       monsters,
       camera,
       player,
-      renderer;
+      renderer,
+      bullets = [];
 
   // Variables to new levels
   var currentLevelIndex = 0;
@@ -109,16 +113,17 @@
   }
 
   function setup(images, level) {
-    var oldScore = player ? player.score : 0; // Zapamiętujemy wynik przed resetem klasy Player
+    var oldScore = player ? player.score : 0; // Save points
     tower    = new Tower(level);
     monsters = new Monsters(level);
+    bullets  = []; // Reset bullets
     player   = new Player();
-    player.score = oldScore; // Przywracamy wynik na nowym poziomie
+    player.score = oldScore; // Load points
     camera   = new Camera();
     renderer = new Renderer(images);
   }
 
-  // Funkcja wywoływana przy wejściu w punkt 'n'
+  // 'n' function for net level
   function nextLevel() {
     currentLevelIndex++;
     if (currentLevelIndex < levels.length) {
@@ -133,7 +138,25 @@
     player.update(dt);
     monsters.update(dt);
     camera.update(dt);
-    tower.updateCoins(dt); // Dodajemy aktualizację animacji monet
+    tower.updateCoins(dt); // Coin animation
+    tower.updateDisappearingPlatforms(dt);
+    updateBullets(dt);
+  }
+
+  // Bullets logic
+  function updateBullets(dt) {
+    for (var i = bullets.length - 1; i >= 0; i--) {
+      var b = bullets[i];
+      b.x = normalizex(b.x + (dt * b.dx));
+      b.life -= dt;
+      var dx = Math.abs(b.x - player.x);
+      if (dx > tower.w / 2) dx = tower.w - dx;
+      if (dx < player.w/2 && Math.abs(b.y - player.y) < player.h/2 && !player.hurting) {
+        player.hitMonster();
+        b.life = 0;
+      }
+      if (b.life <= 0) bullets.splice(i, 1);
+    }
   }
 
   function render(dt) {
@@ -179,6 +202,8 @@
       this.map      = this.createMap(level.map);
       this.ground   = { platform: true  };
       this.air      = { platform: false };
+      this.teleports = [];
+      this.findTeleports(); 
       this.coinAnimationFrame = 0;
       this.coinAnimationTime = 0;
 
@@ -204,15 +229,57 @@
         for(col = 0 ; col < this.cols ; col++) {
           cell = source[row][col];
           map[row][col] = {
-            platform: (cell == 'X'),
+            platform: (cell == 'X' || cell == 'd'), // 'd' solid but dissappearing platform
+            disappearing: (cell == 'd'),
+            active:   true,
+            timer:    0,
             ladder:   (cell == 'H'),
             coin:     (cell == 'o'),
-            next:     (cell == 'n'), // next level point 
-            exit:     (cell == 'e')  // escape on last level
+            next:     (cell == 'n'), // Next level point 
+            exit:     (cell == 'e'), // Escape on last level
+            spring:   (cell == '^'), // Trampolin
+            teleport: (cell == 't')  // Teleport
           };
         }
       }
       return map;
+    },
+
+    //-------------------------------------------------------------------------
+
+    findTeleports: function() {
+      for(var r=0; r<this.rows; r++) {
+        for(var c=0; c<this.cols; c++) {
+          if(this.map[r][c].teleport) this.teleports.push({row: r, col: c});
+        }
+      }
+    },
+
+    //-------------------------------------------------------------------------
+
+    getRandomTeleport: function(excludeRow, excludeCol) {
+      if(this.teleports.length < 2) return null;
+      var dest;
+      do { dest = Game.Math.randomChoice(this.teleports); } 
+      while (dest.row === excludeRow && dest.col === excludeCol);
+      return dest;
+    },
+
+    //-------------------------------------------------------------------------
+
+    updateDisappearingPlatforms: function(dt) {
+      for(var r=0; r<this.rows; r++) {
+        for(var c=0; c<this.cols; c++) {
+          var cell = this.map[r][c];
+          if(cell.disappearing && cell.steppingOn && cell.active) {
+            cell.timer += dt;
+            if(cell.timer > 0.8) { cell.active = false; cell.platform = false; cell.respawning = true; cell.timer = 0; }
+          } else if (cell.respawning) {
+            cell.timer += dt;
+            if (cell.timer > 3.0) { cell.active = true; cell.platform = true; cell.steppingOn = false; cell.respawning = false; cell.timer = 0; }
+          }
+        }
+      }
     },
 
     //-------------------------------------------------------------------------
@@ -246,12 +313,14 @@
       this.maxdy     = METER * MAXDY;
       this.climbdy   = METER * CLIMBDY;
       this.impulse   = METER * IMPULSE;
+      this.springImpulse = METER * SPRING_IMPULSE;
       this.accel     = this.maxdx / ACCEL;
       this.friction  = this.maxdx / FRICTION;
       this.input     = { left: false, right: false, up: false, down: false, jump: false, jumpAvailable: true };
       this.collision = this.createCollisionPoints();
       this.animation = PLAYER.STAND;
       this.score     = 0;
+      this.teleportCooldown = 0; // Teleport cooldown
 
     },
 
@@ -273,6 +342,7 @@
     update: function(dt) {
 
       this.animate();
+      if (this.teleportCooldown > 0) this.teleportCooldown--; // frame calc for teleport
 
       var wasleft  = this.dx  < 0,
           wasright = this.dx  > 0,
@@ -424,6 +494,32 @@
         return false;
       }
 
+      // Trampolin logic
+      if (bl.spring || br.spring) {
+        this.dy  = 0;
+        this.ddy = this.springImpulse; 
+        this.y   = this.y + 400; // pixel high
+        this.startFalling(false);
+        this.input.jump = false;
+        return false;
+      }
+
+      // Teleport logic
+      if ((ml.teleport || mr.teleport) && this.teleportCooldown <= 0) {
+        var dest = tower.getRandomTeleport(ml.teleport ? ml.row : mr.row, ml.teleport ? ml.col : mr.col);
+        if (dest) {
+          this.x = col2x(dest.col + 0.5);
+          this.y = row2y(dest.row) + 10;
+          this.dx = 0; this.dy = 0;
+          this.teleportCooldown = FPS; // 1 sec block for escape
+          return false;
+        }
+      }
+
+      // Platforms dis
+      if (fallingDown && bl.disappearing && bl.active && nearRowSurface(this.y + bl.y, bl.row)) bl.cell.steppingOn = true;
+      if (fallingDown && br.disappearing && br.active && nearRowSurface(this.y + br.y, br.row)) br.cell.steppingOn = true;
+
       if (fallingDown && bl.blocked && !ml.blocked && !tl.blocked && nearRowSurface(this.y + bl.y, bl.row))
         return this.collideDown(bl);
 
@@ -491,11 +587,15 @@
       point.row  = y2row(this.y + point.y);
       point.col  = x2col(this.x + point.x);
       point.cell = tower.getCell(point.row, point.col);
-      point.blocked  = point.cell.platform;
+      point.blocked  = point.cell.platform && point.cell.active !== false; // Active platform break point
       point.platform = point.cell.platform;
       point.ladder   = point.cell.ladder;
       point.next     = point.cell.next; // Flags n
       point.exit     = point.cell.exit; // Flags e
+      point.spring   = point.cell.spring; // Jump around
+      point.teleport = point.cell.teleport; // Tele
+      point.disappearing = point.cell.disappearing; // Ups
+      point.active   = point.cell.active;
       point.monster  = false;
       point.coin     = false;
       if (point.cell.monster) {
@@ -650,6 +750,7 @@
       this.type = type;
       this[type.dir] = true;
       this.animation = type.animation[type.dir];
+      this.shootTimer = 0;
 
       if (type.vertical) {
         this.minrow = row;
@@ -721,6 +822,17 @@
         this.right = false;
         this.left = true;
         this.animation = this.type.animation.left;
+      }
+
+      // Scorpio shooting logic
+      if (this.type.shoot) {
+        this.shootTimer += dt;
+        if (this.shootTimer > 2.0) {
+          if (Math.abs(player.y - this.y) < ROW_HEIGHT) {
+            bullets.push({ x: this.x, y: this.y, dx: (this.left ? -BULLET_SPEED : BULLET_SPEED), life: 3.0 });
+          }
+          this.shootTimer = 0;
+        }
       }
 
       var row = y2row(this.y - this.ny),
@@ -802,6 +914,7 @@
       this.renderTower(this.ctx);
       this.renderFront(this.ctx);
       this.renderGround(this.ctx);
+      this.renderBullets(this.ctx);
       this.renderPlayer(this.ctx);
       this.renderScore(this.ctx);
       this.ctx.restore();
@@ -936,16 +1049,19 @@
         for(r = rmin ; r <= rmax ; r++) {
           y = ty(r * ROW_HEIGHT);
           cell = tower.getCell(r, c);
-          if (cell.platform)
-            this.renderPlatform(ctx, c, y);
+          if (cell.platform && cell.active) 
+            this.renderPlatform(ctx, c, y, cell.disappearing, cell.steppingOn);
           else if (cell.ladder)
             this.renderLadder(ctx, c, y);
           else if (cell.coin)
             this.renderCoin(ctx, c, y);
           
-          // Renderowanie punktów specjalnych
-          if (cell.next) this.renderPoint(ctx, c, y, "#00FF00"); // Następny poziom - zielony
-          if (cell.exit) this.renderPoint(ctx, c, y, "#FF0000"); // Wyjście - czerwony
+          if (cell.spring) this.renderSpring(ctx, c, y);
+          if (cell.teleport) this.renderTeleport(ctx, c, y);
+
+          // Endpoint render
+          if (cell.next) this.renderPoint(ctx, c, y, "#00FF00"); // Next level - green
+          if (cell.exit) this.renderPoint(ctx, c, y, "#FF0000"); // Exit - red
 
           if (cell.monster)
             this.renderMonster(ctx, c, y, cell.monster);
@@ -954,7 +1070,7 @@
       }
     },
 
-    // Pomocnicza funkcja do rysowania portali na wieży
+    // Teleport cool function
     renderPoint: function(ctx, col, y, color) {
       var x = col2x(col+0.5),
           x0 = tx(x, tower.or);
@@ -966,7 +1082,7 @@
 
     //-------------------------------------------------------------------------
 
-    renderPlatform: function(ctx, col, y) {
+    renderPlatform: function(ctx, col, y, disappear, stepping) {
 
       var x = col2x(col+0.5),
           a = Game.Math.normalizeAngle180(x2a(x) - x2a(camera.rx)),
@@ -974,10 +1090,44 @@
           x1 = x0 - this.platformWidth/2,
           x2 = x0 + this.platformWidth/2;
 
-      ctx.fillStyle = Game.Math.darken(tower.color.platform, 60 * Math.min(1, Math.abs(a/90)));
+      // Platform magic
+      var color = tower.color.platform;
+      if (disappear && stepping && Math.floor(Date.now()/100)%2) color = "#FFFFFF";
+
+      ctx.fillStyle = Game.Math.darken(color, 60 * Math.min(1, Math.abs(a/90)));
       ctx.fillRect(  x1, y - ROW_HEIGHT, x2 - x1, ROW_HEIGHT);
       ctx.strokeRect(x1, y - ROW_HEIGHT, x2 - x1, ROW_HEIGHT);
    
+    },
+
+    //-------------------------------------------------------------------------
+
+    renderSpring: function(ctx, col, y) {
+      var x0 = tx(col2x(col+0.5), tower.or);
+      ctx.fillStyle = "orange";
+      ctx.fillRect(x0 - 15, y - 10, 30, 10);
+    },
+
+    //-------------------------------------------------------------------------
+
+    renderTeleport: function(ctx, col, y) {
+      var x0 = tx(col2x(col+0.5), tower.or);
+      ctx.fillStyle = "purple";
+      ctx.beginPath();
+      ctx.arc(x0, y - ROW_HEIGHT/2, 15 + Math.sin(Date.now()/200)*5, 0, 2*Math.PI);
+      ctx.fill();
+    },
+
+    //-------------------------------------------------------------------------
+
+    renderBullets: function(ctx) {
+      ctx.fillStyle = "red";
+      for(var i=0; i<bullets.length; i++) {
+        var b = bullets[i];
+        ctx.beginPath();
+        ctx.arc(tx(b.x, tower.or), ty(b.y), 5, 0, 2*Math.PI);
+        ctx.fill();
+      }
     },
 
     //-------------------------------------------------------------------------

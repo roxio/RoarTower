@@ -21,14 +21,25 @@ FUTURE FEATURES
 
  * ~~level exit~~ ✅
  * game menu
- *  ~~multiple levels~~ ✅
- * dissolving platforms
+ * ~~multiple levels~~ ✅
+ * ~~dissolving platforms~~ ✅
  * elevators
- * shortcut doors
+ * ~~shortcut doors~~ as ~~teleports~~ ✅
  * countdown timer
  * mobile touch support
  * sound fx and music
  * ~~animated coins~~ ✅
+ * ~~features~~ ✅
+ 
+ LEVEL DEVELOPMENT
+=========
+"e" (Exit): Last level final exit
+"n" (Next): Entry to next level from list
+"^" (Springboard): Place this sign to create an orange bounce block. Upon stepping on it, the player will be launched high into the air.
+"t" (Teleport): Place at least two such points on the map. Upon stepping on one, the player will be teleported to the other. Thanks to the teleport cooldown, the player has time to exit the portal.
+"d" (Disappearing Platform): This acts like a regular platform, but upon stepping on it, it begins to flash and disappears after less than a second, reappearing after 3 seconds.
+"4" (Scorpion): This is a new enemy type in the MONSTERS table. It moves horizontally and fires red projectiles when the player reaches its height.
+
 
 TECH DEBT
 =========
