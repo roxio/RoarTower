@@ -505,8 +505,9 @@
       }
 
       // Teleport logic
-      if ((ml.teleport || mr.teleport) && this.teleportCooldown <= 0) {
-        var dest = tower.getRandomTeleport(ml.teleport ? ml.row : mr.row, ml.teleport ? ml.col : mr.col);
+      if (this.teleportCooldown <= 0 && (bl.teleport || br.teleport || ml.teleport || mr.teleport || ul.teleport || ur.teleport)) {
+        var pt = bl.teleport ? bl : (br.teleport ? br : (ml.teleport ? ml : (mr.teleport ? mr : (ul.teleport ? ul : ur))));
+        var dest = tower.getRandomTeleport(pt.row, pt.col);
         if (dest) {
           this.x = col2x(dest.col + 0.5);
           this.y = row2y(dest.row) + 10;
